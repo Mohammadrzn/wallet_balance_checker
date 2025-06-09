@@ -1,63 +1,89 @@
 import os
 
-from eth_account import Account
-from dotenv import load_dotenv
-from mnemonic import Mnemonic
 from web3 import Web3
+from dotenv import load_dotenv
+from eth_account import Account
 
 load_dotenv()
 
-# --------------------------------------------------------
-def get_private_key_from_mnemonic(mnemonic_words):
-    mnemo = Mnemonic("english")
-    try:
-        account = Account.from_mnemonic(mnemonic_words)
-        private_key = account.key.hex()
-        return private_key
-    except Exception as e:
-        print(f"Error in get_private_key_from_mnemonic: {e}")
-        return None
+# === HARD-CODED MNEMONIC ===
+mnemonic_phrase = os.getenv("SECRET_PHRASE")
 
-# --------------------------------------------------------
-
-def get_public_key_from_private(privateKey):
-    try:
-        account = Account.from_key(privateKey)
-        private_key = account.key.hex()  
-        public_key = account.address
-        return private_key, public_key
-    except Exception as e:
-        print(f"Error in get_public_key_from_private: {e}")
-        return None, None
-
-# --------------------------------------------------------
-
-infura = [""] * 100  
-balance = [0] * 100   
-
-infura[0] = os.getenv("ENDPOINT")
-input_string = os.getenv("SECRET_PHRASE")
-
+# === Derive Address from Mnemonic ===
 Account.enable_unaudited_hdwallet_features()
-mnemonic_words = input_string
+try:
+    account = Account.from_mnemonic(mnemonic_phrase)
+    wallet_address = account.address
+    print(f"\n🔑 Wallet Address: {wallet_address}")
+except Exception as e:
+    print(f"Error: {e}")
+    exit(1)
 
-private_key = get_private_key_from_mnemonic(mnemonic_words)
-if private_key is None:
-    print("Failed to get private key from mnemonic.")
+# === List of EVM-Compatible Chains ===
+chains = {
+    "Ethereum": {
+        "rpc": "https://mainnet.infura.io/v3/a5bc4afbdb2b4513bec2a518396ecbb5",
+        "symbol": "ETH"
+    },
+    "Binance Smart Chain": {
+        "rpc": "https://bsc-dataseed.binance.org/",
+        "symbol": "BNB"
+    },
+    "Polygon": {
+        "rpc": "https://polygon-rpc.com",
+        "symbol": "MATIC"
+    },
+    "Core DAO": {
+        "rpc": "https://rpc.coredao.org",
+        "symbol": "CORE"
+    },
+    "Avalanche": {
+        "rpc": "https://api.avax.network/ext/bc/C/rpc",
+        "symbol": "AVAX"
+    },
+    "Arbitrum One": {
+        "rpc": "https://arb1.arbitrum.io/rpc",
+        "symbol": "ETH"
+    },
+    "Optimism": {
+        "rpc": "https://mainnet.optimism.io",
+        "symbol": "ETH"
+    },
+    "Fantom": {
+        "rpc": "https://rpc.ankr.com/fantom/cf1e29b95c620a84a0798a58332389e0570f3d1af77ee50d7f024413d9948e00",
+        "symbol": "FTM"
+    },
+    "Base": {
+        "rpc": "https://mainnet.base.org",
+        "symbol": "ETH"
+    },
+    "zkSync Era": {
+        "rpc": "https://mainnet.era.zksync.io",
+        "symbol": "ETH"
+    }
+}
+
+# === Scan for Native Balances ===
+print("\n🔍 Scanning for native coin balances across chains...\n")
+found_any = False
+
+for name, info in chains.items():
+    try:
+        w3 = Web3(Web3.HTTPProvider(info["rpc"]))
+        if not w3.is_connected():
+            print(f"❌ {name}: RPC not reachable.")
+            continue
+        balance_wei = w3.eth.get_balance(wallet_address)
+        balance = Web3.from_wei(balance_wei, 'ether')
+        if balance > 0:
+            found_any = True
+            print(f"✅ {name}: {balance:.6f} {info['symbol']}")
+        else:
+            print(f"{name}: 0 {info['symbol']}")
+    except Exception as e:
+        print(f"❌ {name}: Error - {e}")
+
+if not found_any:
+    print("\n🕵️ No coins found across scanned networks.")
 else:
-    private_key, public_key = get_public_key_from_private(private_key)
-    if public_key is None:
-        print("Failed to get public key from private key.")
-    else:
-        try:
-            w3 = Web3(Web3.HTTPProvider(infura[0]))
-            if w3.is_connected():
-                try:
-                    balance[0] = w3.eth.get_balance(public_key)
-                    print(f"URL: {infura[0]} \nBalance: {balance[0] / 10**18} ETH\n")
-                except Exception as e:
-                    print(f"Error getting balance: {e}")
-            else:
-                print("Failed to connect to the Ethereum network.")
-        except Exception as e:
-            print(f"Error creating Web3 instance: {e}")
+    print("\n🎉 Done scanning! Native balances found.")
