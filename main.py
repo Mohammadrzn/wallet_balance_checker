@@ -1,7 +1,3 @@
-import subprocess
-import random
-import time
-import sys
 import os
 
 from eth_account import Account
