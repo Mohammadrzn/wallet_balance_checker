@@ -11,7 +11,6 @@ load_dotenv()
 def get_private_key_from_mnemonic(mnemonic_words):
     mnemo = Mnemonic("english")
     try:
-        # ایجاد حساب از عبارت mnemonic و استخراج کلید خصوصی
         account = Account.from_mnemonic(mnemonic_words)
         private_key = account.key.hex()
         return private_key
@@ -36,7 +35,6 @@ def get_public_key_from_private(privateKey):
 infura = [""] * 100  
 balance = [0] * 100   
 
-# مقداردهی آرایه infura
 infura[0] = os.getenv("ENDPOINT")
 input_string = os.getenv("SECRET_PHRASE")
 
